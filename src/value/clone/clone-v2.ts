@@ -37,7 +37,10 @@ import { IsArray, IsDate, IsMap, IsSet, IsObject, IsTypedArray, IsValueType } fr
 // ------------------------------------------------------------------
 function FromObject(value: FromObject, visited: WeakSet<object>): any {
   const Acc = {} as Record<PropertyKey, unknown>
-  for (const key of Reflect.ownKeys(value)) {
+  for (const key of Object.getOwnPropertyNames(value)) {
+    Acc[key] = CloneWithVisited(value[key], visited)
+  }
+  for (const key of Object.getOwnPropertySymbols(value)) {
     Acc[key] = CloneWithVisited(value[key], visited)
   }
   return Acc
@@ -49,21 +52,13 @@ function FromTypedArray(value: TypedArrayType): any {
   return value.slice()
 }
 function FromMap(value: Map<unknown, unknown>, visited: WeakSet<object>): any {
-  const clonedMap = new Map()
-  for (const [key, val] of value) {
-    clonedMap.set(CloneWithVisited(key, visited), CloneWithVisited(val, visited))
-  }
-  return clonedMap
+  return new Map(CloneWithVisited([...value.entries()], visited))
 }
 function FromSet(value: Set<unknown>, visited: WeakSet<object>): any {
-  const clonedSet = new Set()
-  for (const item of value) {
-    clonedSet.add(CloneWithVisited(item, visited))
-  }
-  return clonedSet
+  return new Set(CloneWithVisited([...value.entries()], visited))
 }
 function FromDate(value: Date): any {
-  return new Date(value.getTime())
+  return new Date(value.toISOString())
 }
 function FromValue(value: ValueType): any {
   return value
@@ -84,13 +79,13 @@ function CloneWithVisited<T>(value: T, visited: WeakSet<object>): T {
     visited.add(value as object)
   }
 
-  if (IsValueType(value)) return FromValue(value)
   if (IsArray(value)) return FromArray(value, visited)
-  if (IsObject(value)) return FromObject(value, visited)
   if (IsDate(value)) return FromDate(value)
   if (IsTypedArray(value)) return FromTypedArray(value)
   if (IsMap(value)) return FromMap(value, visited)
   if (IsSet(value)) return FromSet(value, visited)
+  if (IsObject(value)) return FromObject(value, visited)
+  if (IsValueType(value)) return FromValue(value)
   throw new Error('ValueClone: Unable to clone value')
 }
 

@@ -35,69 +35,45 @@ import { IsArray, IsDate, IsMap, IsSet, IsObject, IsTypedArray, IsValueType } fr
 // ------------------------------------------------------------------
 // Clonable
 // ------------------------------------------------------------------
-function FromObject(value: FromObject, visited: WeakSet<object>): any {
+function FromObject(value: FromObject): any {
   const Acc = {} as Record<PropertyKey, unknown>
-  for (const key of Reflect.ownKeys(value)) {
-    Acc[key] = CloneWithVisited(value[key], visited)
+  for (const key of Object.getOwnPropertyNames(value)) {
+    Acc[key] = Clone(value[key])
+  }
+  for (const key of Object.getOwnPropertySymbols(value)) {
+    Acc[key] = Clone(value[key])
   }
   return Acc
 }
-function FromArray(value: FromArray, visited: WeakSet<object>): any {
-  return value.map((element: any) => CloneWithVisited(element, visited))
+function FromArray(value: FromArray): any {
+  return value.map((element: any) => Clone(element))
 }
 function FromTypedArray(value: TypedArrayType): any {
   return value.slice()
 }
-function FromMap(value: Map<unknown, unknown>, visited: WeakSet<object>): any {
-  const clonedMap = new Map()
-  for (const [key, val] of value) {
-    clonedMap.set(CloneWithVisited(key, visited), CloneWithVisited(val, visited))
-  }
-  return clonedMap
+function FromMap(value: Map<unknown, unknown>): any {
+  return new Map(Clone([...value.entries()]))
 }
-function FromSet(value: Set<unknown>, visited: WeakSet<object>): any {
-  const clonedSet = new Set()
-  for (const item of value) {
-    clonedSet.add(CloneWithVisited(item, visited))
-  }
-  return clonedSet
+function FromSet(value: Set<unknown>): any {
+  return new Set(Clone([...value.entries()]))
 }
 function FromDate(value: Date): any {
-  return new Date(value.getTime())
+  return new Date(value.toISOString())
 }
 function FromValue(value: ValueType): any {
   return value
 }
 // ------------------------------------------------------------------
-// Clone with circular reference detection
-// ------------------------------------------------------------------
-function CloneWithVisited<T>(value: T, visited: WeakSet<object>): T {
-  // Handle circular references for objects and arrays
-  if ((IsObject(value) || IsArray(value) || IsMap(value) || IsSet(value)) && visited.has(value as object)) {
-    // Return a reference marker or the original value to break the cycle
-    // For OpenAPI schemas, returning the original reference is often acceptable
-    return value
-  }
-
-  // Add to visited set before processing
-  if (IsObject(value) || IsArray(value) || IsMap(value) || IsSet(value)) {
-    visited.add(value as object)
-  }
-
-  if (IsValueType(value)) return FromValue(value)
-  if (IsArray(value)) return FromArray(value, visited)
-  if (IsObject(value)) return FromObject(value, visited)
-  if (IsDate(value)) return FromDate(value)
-  if (IsTypedArray(value)) return FromTypedArray(value)
-  if (IsMap(value)) return FromMap(value, visited)
-  if (IsSet(value)) return FromSet(value, visited)
-  throw new Error('ValueClone: Unable to clone value')
-}
-
-// ------------------------------------------------------------------
 // Clone
 // ------------------------------------------------------------------
 /** Returns a clone of the given value */
-export function Clone<T>(value: T): T {
-  return CloneWithVisited(value, new WeakSet<object>())
+export function Clone<T extends unknown>(value: T): T {
+  if (IsArray(value)) return FromArray(value)
+  if (IsDate(value)) return FromDate(value)
+  if (IsTypedArray(value)) return FromTypedArray(value)
+  if (IsMap(value)) return FromMap(value)
+  if (IsSet(value)) return FromSet(value)
+  if (IsObject(value)) return FromObject(value)
+  if (IsValueType(value)) return FromValue(value)
+  throw new Error('ValueClone: Unable to clone value')
 }
