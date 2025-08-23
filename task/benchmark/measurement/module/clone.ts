@@ -5,6 +5,7 @@ import { TSchema, TypeGuard } from '@sinclair/typebox'
 import { Clone as CloneAmrit } from '../../../../src/value/clone/clone'
 import { Clone as CloneOriginal } from '../../../../src/value/clone/clone-original'
 import { Clone as CloneV2 } from '../../../../src/value/clone/clone-v2'
+import { Clone as CloneV3 } from '../../../../src/value/clone/clone-v3'
 
 export namespace CloneBenchmark {
   // Test data for different scenarios
@@ -127,6 +128,16 @@ export namespace CloneBenchmark {
     return { type: `${name}_v2_clone`, ...result }
   }
 
+  function MeasureCloneV3(name: string, data: any, iterations: number = 100_000) {
+    console.log('CloneBenchmark.MeasureCloneV3(', name, ')')
+    
+    const result = Benchmark.Measure(() => {
+      CloneV3(data)
+    }, iterations)
+
+    return { type: `${name}_v3_clone`, ...result }
+  }
+
   function MeasureCloneWithValidation(name: string, data: any, iterations: number = 100_000) {
     console.log('CloneBenchmark.MeasureCloneWithValidation(', name, ')')
     
@@ -245,11 +256,17 @@ export namespace CloneBenchmark {
         CloneV2(data)
       }, iterations)
 
+      // V3 Clone
+      const v3Result = Benchmark.Measure(() => {
+        CloneV3(data)
+      }, iterations)
+
       yield {
         type: `clone_comparison_${name}`,
         amrit_clone: amritResult,
         original_clone: originalResult,
-        v2_clone: v2Result
+        v2_clone: v2Result,
+        v3_clone: v3Result
       }
     }
 
@@ -267,11 +284,17 @@ export namespace CloneBenchmark {
         CloneV2(data)
       }, iterations)
 
+      // V3 Clone
+      const v3Result = Benchmark.Measure(() => {
+        CloneV3(data)
+      }, iterations)
+
       yield {
         type: `clone_comparison_${name}`,
         amrit_clone: amritResult,
         original_clone: { completed: 0, iterations: 0, note: 'N/A - No circular reference support' },
-        v2_clone: v2Result
+        v2_clone: v2Result,
+        v3_clone: v3Result
       }
     }
   }
